@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@import '../lib/styles.css';
+
+body {
+  margin: 0;
+  background-color: #ececee;
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

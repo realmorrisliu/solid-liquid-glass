@@ -1,0 +1,23 @@
+solid-liquid-glass
+==================
+
+This project is a Solid 2.0 + @ui-sdk/solid port of `bilalgursen/liquid-glass`:
+  Upstream repository: https://github.com/bilalgursen/liquid-glass
+  Upstream showcase:   https://onemorethink.dev/
+  Upstream license:    MIT License (Copyright (c) 2026 Bilal Abdullah Gürşen)
+
+Upstream work retained / faithfully ported:
+  - WebGL2 GLSL 300 es optical shader, SDF / melt math, damped spring physics,
+    and shared multi-surface Canvas2D blitting engine (`engine.ts`)
+  - Canvas2D DOM backdrop snapshotter (`dom-snapshot.ts`)
+  - Component visual design, optical presets, and verb-driven API surface
+    (`GlassButton`, `GlassActionButton`, `GlassTabs`, `GlassLens`, `GlassBadge`,
+    `GlassCard`, `GlassButtonGroup`, `GlassPopup`, `GlassPopover`,
+    `GlassDropdownMenu`, `GlassSelect`, `GlassSlideToConfirm`, `GlassLayer`)
+
+Port & downstream additions (Copyright (c) 2026 Morris Liu):
+  - Idiomatic Solid 2.0 (`solid-js@^2.0.0`, `@solidjs/web@^2.0.0`) reactive
+    component architecture without React/VDOM dependencies
+  - Behavior integration with `@ui-sdk/solid` (`vercel-labs/ui`)
+  - Accessibility enhancement: `(prefers-reduced-transparency: reduce)` detection
+    and high-contrast fallback styling alongside `(prefers-reduced-motion: reduce)`

@@ -1,0 +1,238 @@
+/* Base styles for solid-liquid-glass.
+   Ported from bilalgursen/liquid-glass (MIT) with prefers-reduced-transparency fallbacks. */
+
+@layer components {
+  :where([data-glass-host]) {
+    position: relative;
+    isolation: isolate;
+  }
+}
+
+/* Once WebGL2 draws, it takes over background, border, shadow, and backdrop-filter from the fallback look. */
+[data-glass-host][data-glass-ready] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+@keyframes glass-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+[data-glass-marquee] {
+  animation: glass-marquee var(--glass-marquee-duration, 5s) linear infinite;
+}
+
+@keyframes glass-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(4px);
+  }
+}
+
+[data-glass-in] {
+  animation: glass-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes glass-draw {
+  from {
+    stroke-dashoffset: 25;
+  }
+}
+
+[data-glass-draw] {
+  stroke-dasharray: 25;
+  animation: glass-draw 0.42s cubic-bezier(0.65, 0, 0.35, 1) 0.12s both;
+}
+
+@keyframes glass-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+[data-glass-spin] {
+  animation: glass-spin 0.8s linear infinite;
+}
+
+@keyframes glass-letter {
+  from {
+    opacity: 0;
+    filter: blur(10px) brightness(0);
+  }
+}
+
+[data-glass-letter] {
+  animation: glass-letter 0.4s ease-out both;
+  animation-delay: calc(var(--glass-c, 0) * 0.01s);
+}
+
+[data-glass-ready] [data-glass-fallback] {
+  visibility: hidden;
+}
+
+/* Popup shared styles */
+[data-glass-popup] {
+  isolation: isolate;
+  overflow: visible !important;
+  background: transparent;
+}
+
+[data-glass-popup][data-glass-off] {
+  background: rgb(255 255 255 / 0.88);
+  border: 1px solid rgb(0 0 0 / 0.1);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+:is(.dark, [data-theme='dark']) [data-glass-popup][data-glass-off] {
+  background: rgb(23 23 23 / 0.88);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+[data-glass-popup] :is([role='option'], [role='menuitem'], [data-glass-item]) {
+  transition: background-color 0.12s ease;
+}
+
+[data-glass-popup]:not([data-glass-off]) :is([role='listbox'], [role='menu'], [data-glass-list]) {
+  opacity: var(--glass-out, 0);
+}
+
+[data-glass-popup]:not([data-glass-off]) :is([role='option'], [role='menuitem'], [data-glass-item]) {
+  --glass-in: clamp(0, calc((var(--glass-items, 0) - var(--glass-i, 0) * var(--glass-gap)) / var(--glass-fade)), 1);
+  opacity: calc(var(--glass-base, 1) * var(--glass-in));
+  translate: 0 calc((1 - var(--glass-in)) * 6px);
+}
+
+[data-glass-popup] :is([role='option'], [role='menuitem'], [data-glass-item])[data-disabled] {
+  --glass-base: 0.4;
+}
+
+[data-glass-popup][data-glass-arriving] :is([role='listbox'], [role='menu'], [data-glass-list]) {
+  overflow: hidden;
+}
+
+[data-glass-popup][data-glass-off] :is([role='listbox'], [role='menu'], [data-glass-list]) {
+  transition: opacity 0.16s ease;
+}
+
+[data-glass-popup][data-glass-off]:is([data-starting-style], [data-ending-style]) :is([role='listbox'], [role='menu'], [data-glass-list]) {
+  opacity: 0;
+}
+
+[data-glass-anchor] > :not(canvas) {
+  translate: 0 var(--glass-sway-y, 0px);
+  scale: var(--glass-sway-sx, 1) var(--glass-sway-sy, 1);
+  filter: var(--glass-lit, none);
+}
+
+[data-glass-popup]:not([data-glass-off]) :is([role='listbox'], [role='menu'], [data-glass-list]) {
+  translate: var(--glass-ride-x, 0px) var(--glass-ride-y, 0px);
+  scale: var(--glass-zoom, 1);
+  clip-path: var(--glass-clip, none);
+  filter: var(--glass-lit, ) var(--glass-soft, );
+}
+
+[data-glass-anchor][data-glass-morphing] > :not(canvas) {
+  filter: var(--glass-lit, ) blur(var(--glass-label-blur, 0px)) opacity(var(--glass-label, 1));
+}
+
+[data-glass-hold] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 1;
+  pointer-events: none;
+}
+
+[data-glass-card-shadow] {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow:
+    0 20px 48px oklch(0 0 0 / 0.105),
+    0 3px 10px oklch(0 0 0 / 0.045);
+}
+
+[data-glass-popup][data-glass-tone='dark'] > [data-glass-card-shadow] {
+  box-shadow: 0 22px 55px oklch(0 0 0 / 0.34);
+}
+
+[data-glass-popup][data-glass-off] > [data-glass-card-shadow] {
+  opacity: 1 !important;
+}
+
+[data-glass-anchor][data-glass-label='in'] [data-glass-char] {
+  animation: glass-char 0.4s ease-out both;
+  animation-delay: calc(var(--glass-at, 0s) + var(--glass-c, 0) * 0.01s);
+}
+
+[data-glass-anchor][data-glass-morphing] [data-glass-char] {
+  opacity: 0;
+}
+
+@keyframes glass-char {
+  from {
+    opacity: 0;
+    filter: blur(10px) brightness(0);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+  }
+}
+
+@keyframes glass-hold {
+  to {
+    opacity: 0;
+  }
+}
+
+[data-glass-popup]:not([data-glass-off])[data-ending-style] > [data-glass-hold] {
+  animation: glass-hold 60s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glass-marquee],
+  [data-glass-in],
+  [data-glass-draw],
+  [data-glass-spin],
+  [data-glass-letter] {
+    animation: none;
+  }
+  [data-glass-char] {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+  [data-glass-popup]:not([data-glass-off])[data-ending-style] > [data-glass-hold] {
+    animation: none;
+  }
+}
+
+/* Reduced transparency accessibility fallback: opaque, crisp contrast, no backdrop blur. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-glass-host]:not([data-glass-ready]) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: rgb(255 255 255 / 0.96) !important;
+  }
+  :is(.dark, [data-theme='dark']) [data-glass-host]:not([data-glass-ready]) {
+    background-color: rgb(28 28 30 / 0.96) !important;
+  }
+  [data-glass-popup][data-glass-off] {
+    background: rgb(255 255 255 / 0.98) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  :is(.dark, [data-theme='dark']) [data-glass-popup][data-glass-off] {
+    background: rgb(28 28 30 / 0.98) !important;
+  }
+}
