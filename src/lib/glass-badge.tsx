@@ -169,6 +169,7 @@ export function GlassBadge(rawProps: GlassBadgeProps) {
               frost: 0,
             },
             cursorLight: true,
+            pointerLight: true,
             reflection:
               cfg.tint > 0.6
                 ? undefined

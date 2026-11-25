@@ -577,6 +577,7 @@ export function GlassSlideToConfirm(rawProps: GlassSlideToConfirmProps) {
             frost,
           },
           cursorLight: true,
+          pointerLight: true,
           reflection: liveCfg.mirror
             ? {
                 height: d,

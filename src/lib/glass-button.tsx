@@ -16,6 +16,8 @@ export type GlassButtonProps = {
   icon?: JSX.Element
   iconPosition?: 'start' | 'end'
   tint?: number
+  /** Hold and drag: the button follows the pointer a little way, stretches along the pull and swings back when let go. Default `true`. */
+  pull?: boolean
   optics?: GlassOptics
   class?: string
   disabled?: boolean
@@ -51,12 +53,13 @@ export function GlassButton(rawProps: GlassButtonProps) {
       material: 'clear' as GlassMaterial,
       size: 'md' as GlassButtonSize,
       iconPosition: 'end' as const,
+      pull: true,
       class: '',
       type: 'button' as const,
     },
     rawProps,
   )
-  const rest = omit(props, 'children', 'material', 'size', 'icon', 'iconPosition', 'tint', 'optics', 'class', 'render', 'href', 'target', 'rel')
+  const rest = omit(props, 'children', 'material', 'size', 'icon', 'iconPosition', 'tint', 'pull', 'optics', 'class', 'render', 'href', 'target', 'rel')
 
   const baseClass = () => {
     const corners = /(^|\s)!?rounded-/.test(props.class) ? '' : 'rounded-full'
@@ -65,7 +68,7 @@ export function GlassButton(rawProps: GlassButtonProps) {
 
   const inner = () => (
     <>
-      <GlassLayer material={props.material} tint={props.tint} optics={props.optics} />
+      <GlassLayer material={props.material} tint={props.tint} pull={props.pull} optics={props.optics} />
       <Show when={props.icon && props.iconPosition === 'start'}>{props.icon}</Show>
       {props.children}
       <Show when={props.icon && props.iconPosition === 'end'}>{props.icon}</Show>

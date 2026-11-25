@@ -279,6 +279,7 @@ export function GlassLens(rawProps: GlassLensProps) {
               frost,
             },
             cursorLight: true,
+            pointerLight: true,
             reflection: {
               height: tall,
               paint: (around, reach) => {

@@ -12,6 +12,20 @@ import {
   GlassDropdownMenuItem,
   GlassDropdownMenuSeparator,
   GlassDropdownMenuTrigger,
+  GlassMenu,
+  GlassMenuCheckboxItem,
+  GlassMenuContent,
+  GlassMenuGroup,
+  GlassMenuItem,
+  GlassMenuLabel,
+  GlassMenuRadioGroup,
+  GlassMenuRadioItem,
+  GlassMenuSeparator,
+  GlassMenuShortcut,
+  GlassMenuSub,
+  GlassMenuSubContent,
+  GlassMenuSubTrigger,
+  GlassMenuTrigger,
   GlassPopover,
   GlassPopoverClose,
   GlassPopoverContent,
@@ -27,6 +41,8 @@ import {
 export function App() {
   const [tab, setTab] = createSignal<'paperback' | '32kai' | 'trade'>('paperback')
   const [role, setRole] = createSignal<string | null>('editorial')
+  const [trimMode, setTrimMode] = createSignal<'paper' | 'margins' | 'notes'>('notes')
+  const [pinned, setPinned] = createSignal(true)
   const [lastAction, setLastAction] = createSignal('Ready')
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -60,28 +76,43 @@ export function App() {
             class="pointer-events-none absolute right-10 top-6 h-28 w-28 rounded-full bg-gradient-to-br from-[#F0B267] to-[#D2693C] opacity-80"
           />
 
-          <div class="relative z-10 flex flex-wrap items-center gap-4">
-            <GlassButton onClick={() => setLastAction('Clear GlassButton clicked')}>Clear Glass</GlassButton>
-            <GlassButton
-              material="tinted"
-              class="bg-[#1D1D1F] text-white"
-              onClick={() => setLastAction('Tinted GlassButton clicked')}
-            >
-              Tinted Dark
-            </GlassButton>
-            <GlassActionButton
-              material="tinted"
-              class="bg-[#FC7401] text-white"
-              pendingLabel="Publishing"
-              successLabel="Published"
-              resetAfter={2200}
-              onAction={async () => {
-                await wait(700)
-                setLastAction('Action button completed')
-              }}
-            >
-              Publish
-            </GlassActionButton>
+          <div class="relative z-10 flex flex-col gap-5">
+            <div class="flex flex-wrap items-center gap-4">
+              <GlassButton onClick={() => setLastAction('Clear GlassButton clicked')}>Clear Glass</GlassButton>
+              <GlassButton
+                material="tinted"
+                class="bg-[#1D1D1F] text-white"
+                onClick={() => setLastAction('Tinted GlassButton clicked')}
+              >
+                Tinted Dark
+              </GlassButton>
+              <GlassActionButton
+                material="tinted"
+                class="bg-[#FC7401] text-white"
+                pendingLabel="Publishing"
+                successLabel="Published"
+                resetAfter={2200}
+                onAction={async () => {
+                  await wait(700)
+                  setLastAction('Action button completed')
+                }}
+              >
+                Publish
+              </GlassActionButton>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <span class="mr-1 text-xs font-medium text-[#6e6e73]">Cohesion 2.0 (hold &amp; drag together):</span>
+              <GlassButton size="sm" onClick={() => setLastAction('Cohesion Clear A')}>
+                Read
+              </GlassButton>
+              <GlassButton size="sm" material="tinted" class="bg-[#FC7401] text-white" onClick={() => setLastAction('Cohesion Amber')}>
+                Highlight
+              </GlassButton>
+              <GlassButton size="sm" onClick={() => setLastAction('Cohesion Clear B')}>
+                Share
+              </GlassButton>
+            </div>
           </div>
         </section>
 
@@ -123,6 +154,42 @@ export function App() {
                   </GlassPopoverClose>
                 </GlassPopoverContent>
               </GlassPopover>
+
+              <GlassMenu>
+                <GlassMenuTrigger class="h-10 text-sm font-semibold">Grow Menu 2.0</GlassMenuTrigger>
+                <GlassMenuContent align="start">
+                  <GlassMenuGroup>
+                    <GlassMenuLabel>Reading View</GlassMenuLabel>
+                    <GlassMenuRadioGroup value={trimMode()} onValueChange={(v) => setTrimMode(v as 'paper' | 'margins' | 'notes')}>
+                      <GlassMenuRadioItem value="paper">Pure Page</GlassMenuRadioItem>
+                      <GlassMenuRadioItem value="margins">Wide Margins</GlassMenuRadioItem>
+                      <GlassMenuRadioItem value="notes">With Marginalia</GlassMenuRadioItem>
+                    </GlassMenuRadioGroup>
+                  </GlassMenuGroup>
+                  <GlassMenuSeparator />
+                  <GlassMenuCheckboxItem
+                    value="pinned"
+                    checked={pinned()}
+                    onCheckedChange={(v) => {
+                      setPinned(v)
+                      setLastAction(`Pinned: ${v}`)
+                    }}
+                  >
+                    Pin Toolbar <GlassMenuShortcut>⌘P</GlassMenuShortcut>
+                  </GlassMenuCheckboxItem>
+                  <GlassMenuSub>
+                    <GlassMenuSubTrigger>Export</GlassMenuSubTrigger>
+                    <GlassMenuSubContent>
+                      <GlassMenuItem onSelect={() => setLastAction('Export Markdown')}>Markdown</GlassMenuItem>
+                      <GlassMenuItem onSelect={() => setLastAction('Export PDF')}>PDF Notes</GlassMenuItem>
+                    </GlassMenuSubContent>
+                  </GlassMenuSub>
+                  <GlassMenuSeparator />
+                  <GlassMenuItem destructive onSelect={() => setLastAction('Cleared notes')}>
+                    Clear Notes
+                  </GlassMenuItem>
+                </GlassMenuContent>
+              </GlassMenu>
 
               <GlassDropdownMenu>
                 <GlassDropdownMenuTrigger>Actions</GlassDropdownMenuTrigger>

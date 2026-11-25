@@ -47,6 +47,33 @@ export {
   type GlassDropdownMenuContentProps,
   type GlassDropdownMenuItemProps,
 } from './glass-dropdown-menu'
+export {
+  GlassMenu,
+  GlassMenuTrigger,
+  GlassMenuContent,
+  GlassMenuItem,
+  GlassMenuCheckboxItem,
+  GlassMenuRadioGroup,
+  GlassMenuRadioItem,
+  GlassMenuGroup,
+  GlassMenuLabel,
+  GlassMenuShortcut,
+  GlassMenuSeparator,
+  GlassMenuSub,
+  GlassMenuSubTrigger,
+  GlassMenuSubContent,
+  type GlassMenuProps,
+  type GlassMenuTriggerProps,
+  type GlassMenuContentProps,
+  type GlassMenuItemProps,
+  type GlassMenuCheckboxItemProps,
+  type GlassMenuRadioGroupProps,
+  type GlassMenuRadioItemProps,
+  type GlassMenuGroupProps,
+  type GlassMenuLabelProps,
+  type GlassMenuShortcutProps,
+  type GlassMenuSubTriggerProps,
+} from './glass-menu'
 export { GlassSelect, type GlassSelectProps, type GlassSelectOption } from './glass-select'
 export {
   GlassLayer,

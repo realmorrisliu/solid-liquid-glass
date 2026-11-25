@@ -170,12 +170,12 @@
   opacity: 1 !important;
 }
 
-[data-glass-anchor][data-glass-label='in'] [data-glass-char] {
+[data-glass-anchor][data-glass-label='in'] :is([data-glass-char], svg) {
   animation: glass-char 0.4s ease-out both;
   animation-delay: calc(var(--glass-at, 0s) + var(--glass-c, 0) * 0.01s);
 }
 
-[data-glass-anchor][data-glass-morphing] [data-glass-char] {
+[data-glass-anchor][data-glass-morphing] :is([data-glass-char], svg) {
   opacity: 0;
 }
 
@@ -208,7 +208,8 @@
   [data-glass-letter] {
     animation: none;
   }
-  [data-glass-char] {
+  [data-glass-char],
+  [data-glass-anchor] svg {
     opacity: 1 !important;
     animation: none !important;
   }

@@ -1,6 +1,6 @@
 {
   "name": "solid-liquid-glass",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Liquid Glass components for Solid 2.0 and @ui-sdk/solid, powered by a shared WebGL2 refraction engine.",
   "type": "module",
   "license": "MIT",

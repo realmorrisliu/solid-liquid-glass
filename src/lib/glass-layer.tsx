@@ -1,13 +1,15 @@
 // GlassLayer — turns any positioned element (a button, a link, a pill) into liquid glass.
-// Solid 2.0 port of bilalgursen/liquid-glass (MIT).
+// Solid 2.0 port of bilalgursen/liquid-glass v2.0 (MIT).
 
 import { createEffect, merge, onCleanup } from 'solid-js'
 
 import { drawAround, drawDom } from './dom-snapshot'
 import {
   DESIGN_HEIGHT,
+  PULL,
   SPRINGS,
   clamp,
+  cohesionSoftness,
   getGlassEngine,
   lerp,
   mixRgb,
@@ -65,6 +67,9 @@ export type GlassLayerProps = {
   trigger?: string
   disabled?: boolean
   swell?: boolean
+  pulse?: unknown
+  pulseHold?: number
+  pull?: boolean
   optics?: GlassOptics
 }
 
@@ -73,6 +78,10 @@ const HOVER_SCALE = 1.04
 const HOVER_GROW = 0.08
 const MAX_GROW_PX = 6
 const DROPLET_GAP = 0.25
+const PULSE = 0.16
+const NOD_AT = 0.15
+const PULSE_KICK = { x: 24, y: 20 }
+const PULSE_BEND = { amount: 0.5, in: 30, out: 5, even: 4, back: 12 }
 
 export const GLASS_CSS = `
 @layer components{:where([data-glass-host]){position:relative;isolation:isolate}}
@@ -115,6 +124,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       live: false,
       disabled: false,
       swell: true,
+      pull: true,
     },
     rawProps,
   )
@@ -122,15 +132,37 @@ export function GlassLayer(rawProps: GlassLayerProps) {
   let canvasEl: HTMLCanvasElement | undefined
   let currentDroplet: GlassDroplet = 'none'
   let currentTune: { tint: number; blur: number; optics?: GlassOptics } = { tint: 0.6, blur: 0 }
+  let currentPulseHold: number | undefined
   let poke: (() => void) | null = null
+  let triggerPulse: (() => void) | null = null
+  let triggerNod: (() => void) | null = null
 
   createEffect(
-    () => ({ droplet: props.droplet, tint: props.tint, blur: props.blur, optics: props.optics }),
+    () => ({ droplet: props.droplet, tint: props.tint, blur: props.blur, optics: props.optics, pulseHold: props.pulseHold }),
     (next) => {
       currentDroplet = next.droplet
       currentTune = { tint: next.tint, blur: next.blur, optics: next.optics }
+      currentPulseHold = next.pulseHold
       poke?.()
     },
+  )
+
+  createEffect(
+    () => props.droplet,
+    (next, prev) => {
+      if (prev !== undefined && prev !== next && prev !== 'none' && next !== 'none') {
+        triggerNod?.()
+      }
+    },
+    { defer: true },
+  )
+
+  createEffect(
+    () => props.pulse,
+    () => {
+      triggerPulse?.()
+    },
+    { defer: true },
   )
 
   createEffect(
@@ -141,6 +173,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       trigger: props.trigger,
       disabled: props.disabled,
       swell: props.swell,
+      pull: props.pull,
     }),
     (cfg) => {
       const canvas = canvasEl
@@ -182,12 +215,35 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         sy: 0,
         pinned: [] as Element[],
         rigid: false,
+        near: undefined as Element[] | undefined,
       }
       const press: Spring = { x: 0, v: 0 }
       const growX: Spring = { x: 0, v: 0 }
       const growY: Spring = { x: 0, v: 0 }
       const scale: Spring = { x: 1, v: 0 }
       const drop: Spring = { x: 0, v: 0 }
+      let closing = 0
+      let settle = 0
+      let nod = 0
+      let nodDue = false
+      const playNod = () => {
+        nodDue = false
+        if (hovered) {
+          growX.v += PULSE_KICK.x
+          growY.v += PULSE_KICK.y
+        } else nod = PULSE
+      }
+      let bend = 0
+      let bendFrom = 0
+      let bent = ''
+      let unstretched = ''
+      let unstretchedAt = ''
+      const setBend = (next: string) => {
+        if (bent === next) return
+        bent = next
+        if (next) host.style.setProperty('--glass-bend', next)
+        else host.style.removeProperty('--glass-bend')
+      }
       const maxScale = () => 1 + (2 * MAX_GROW_PX) / Math.max(w, 1)
 
       const view: GlassView = {
@@ -195,29 +251,49 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         ctx,
         dirty: true,
         visible: false,
+        button: cfg.swell,
+        pull: cfg.pull && cfg.swell,
+        grow: 1,
         step: (dt, still) => {
           if (still) {
             press.x = growX.x = growY.x = press.v = growX.v = growY.v = 0
             drop.x = hasDroplet && currentDroplet === 'apart' ? 1 : 0
             drop.v = 0
+            closing = drop.x ? 0 : 1
+            bendFrom = hovered ? 1 : 0
+            settle = nod = bend = 0
+            nodDue = false
+            setBend('')
             scale.x = 1
-            host.style.scale = ''
+            view.grow = 1
             if (colorT !== 1) view.dirty = true
             colorT = 1
             return false
           }
-          const hov = hovered ? 1 : 0
-          const target = pressed ? Math.min(PRESS_SCALE, maxScale()) : hovered ? Math.min(HOVER_SCALE, maxScale()) : 1
-          const a = stepSpring(press, pressed ? 1 : 0, SPRINGS.press, dt)
+          const greeting = settle > 0
+          settle = Math.max(0, settle - dt)
+          const nodding = nod > 0
+          nod = Math.max(0, nod - dt)
+          const hov = hovered || greeting || nodding ? 1 : 0
+          const down = pressed || (cfg.swell && view.held === true) || greeting
+          const target = down ? Math.min(PRESS_SCALE, maxScale()) : hov ? Math.min(HOVER_SCALE, maxScale()) : 1
+          const a = stepSpring(press, down ? 1 : 0, SPRINGS.press, dt)
           const b = stepSpring(growX, hov, SPRINGS.hoverX, dt)
           const c = stepSpring(growY, hov, SPRINGS.hoverY, dt)
           const d = stepSpring(scale, target, SPRINGS.press, dt)
           const apart = currentDroplet === 'apart' && view.visible && !pressed
           const e = hasDroplet ? stepSpring(drop, apart ? 1 : 0, apart ? SPRINGS.dropletOut : SPRINGS.dropletIn, dt) : false
-          host.style.scale = scale.x === 1 ? '' : scale.x.toFixed(4)
+          closing = clamp(closing + (apart ? -1 : 1) * dt * 12)
+          if (nodDue && (apart || drop.x < NOD_AT)) playNod()
+          bend = clamp(bend + ((greeting ? 1 : 0) - bend) * Math.min(1, dt * (greeting ? PULSE_BEND.in : PULSE_BEND.out)))
+          if (!greeting && bend < 0.004) bend = 0
+          bendFrom = clamp(bendFrom + (hov - bendFrom) * Math.min(1, dt * (hov > bendFrom ? PULSE_BEND.even : PULSE_BEND.back)))
+          const by = bend * PULSE_BEND.amount * 2 * HOVER_GROW
+          setBend(bend ? `${(1 + (by * (growX.x - bendFrom) * h) / Math.max(w, 1)).toFixed(4)} ${(1 + by * (growY.x - bendFrom)).toFixed(4)}` : '')
+          view.grow = scale.x
           const fading = 1 - colorT > 0.004
           colorT = fading ? colorT + (1 - colorT) * Math.min(1, dt * 14) : 1
-          return a || b || c || d || e || fading || (clear && cfg.live && view.visible)
+          return a || b || c || d || e || greeting || nodding || nodDue || bend > 0 || fading || (clear && cfg.live && view.visible)
         },
         lens: (refresh) => {
           if (refresh) {
@@ -283,9 +359,6 @@ export function GlassLayer(rawProps: GlassLayerProps) {
             }
             return null
           }
-          const padX = 8
-          const padTop = 10
-          const padBottom = Math.round(h * 0.8 + 4)
           const p = clamp(press.x, -0.12, 1.15)
           const s = Math.max(0.5, scale.x)
           const k = lerp(1, Math.min(PRESS_SCALE, maxScale()), p) / s
@@ -293,6 +366,21 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           const t = hasDroplet ? clamp(drop.x, 0, 1.06) : 0
           const pull = h * (1 + DROPLET_GAP) * t
           const hy = (h / 2) * k + grow * growY.x
+          const dropX = (w / 2 - h / 2) * k + grow * lerp(growX.x - growY.x, growX.x * 0.5, smooth(0, 0.15, t))
+          const reach = Math.max((w / 2) * k + grow * growX.x, t > 0.001 ? dropX + hy : 0)
+          const px = view.pulled?.sx ?? 1
+          const py = view.pulled?.sy ?? 1
+          const most = px === 1 && py === 1 ? 0 : Math.max(w, h) <= PULL.smallUntil ? PULL.smallStretchMax : PULL.stretchMax
+          const melt = cfg.swell ? Math.ceil(cohesionSoftness(h) / 4) + 3 : 0
+          const padX = Math.max(8, Math.ceil(reach * (1 + most) - w / 2 + 2), melt)
+          const padTop = Math.max(10, Math.ceil(hy * (1 + most) - h / 2 + 2), melt)
+          const padBottom = Math.round(h * 0.8 + 4)
+          const origin = `${padX + w / 2}px ${padTop + h / 2}px`
+          const undo = px === 1 && py === 1 ? '' : `${(1 / px).toFixed(6)} ${(1 / py).toFixed(6)}`
+          if (undo !== unstretched || (undo && origin !== unstretchedAt)) {
+            canvas.style.transformOrigin = unstretchedAt = origin
+            canvas.style.scale = unstretched = undo
+          }
           const rect = host.getBoundingClientRect()
           const pc = clamp(press.x)
           const unit = h / DESIGN_HEIGHT
@@ -300,6 +388,8 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           const radius = corner === null ? 999 : corner * (hy / (h / 2))
           const { tint, blur, optics: o } = currentTune
           const strength = Math.max(clamp(o?.light ?? 1, 0, 3), 1e-4)
+          const bridge = h * 0.34 * py * smooth(0, 0.15, t) * (1 - smooth(0.8, 1, t))
+          const dip = Math.hypot(hy * py, (pull * k * px) / 2) - hy * py
           return {
             left: -padX - host.clientLeft,
             top: -padTop - host.clientTop,
@@ -308,16 +398,16 @@ export function GlassLayer(rawProps: GlassLayerProps) {
             unit,
             cx: padX + w / 2,
             cy: padTop + h / 2,
-            hx: (w / 2 - pull / 2) * k + grow * growX.x,
-            hy,
+            hx: ((w / 2 - pull / 2) * k + grow * growX.x) * px,
+            hy: hy * py,
             radius,
-            bodyX: (-pull / 2) * k,
+            bodyX: (-pull / 2) * k * px,
             droplet:
               t > 0.001
                 ? {
-                    x: (w / 2 - h / 2) * k + grow * growX.x * 0.5,
-                    r: hy,
-                    k: h * 0.34 * smooth(0, 0.15, t) * (1 - smooth(0.8, 1, t)),
+                    x: dropX * px,
+                    r: hy * py,
+                    k: lerp(bridge, Math.min(bridge, 4 * dip), closing),
                   }
                 : undefined,
             bevel: (corner === null ? bevel : Math.min(bevel, (radius / unit) * 1.2)) * Math.max(0.05, o?.bevel ?? 1),
@@ -346,6 +436,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
             surface,
             edgeClear: 0.2,
             cursorLight: o?.cursorLight ?? true,
+            pointerLight: true,
             reflection: !clear
               ? undefined
               : {
@@ -393,6 +484,10 @@ export function GlassLayer(rawProps: GlassLayerProps) {
                         const b = el.getBoundingClientRect()
                         return b.width > 0 && b.height > 0 && b.right > region.left && b.left < region.right && b.bottom > region.top && b.top < region.bottom
                       })
+                    if (page.near !== view.near) {
+                      page.near = view.near
+                      page.stale = true
+                    }
                     const again = !!page.ctx && (page.stale || (key !== page.key && !rides) || now - page.at > (cfg.live ? 12 : 120))
                     if (page.ctx && again) {
                       page.stale = false
@@ -415,7 +510,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
                       drawDom(pc2, root, {
                         origin: { left: lx, top: ly },
                         region,
-                        skip: (el) => el === host || el.hasAttribute('data-glass-skip'),
+                        skip: (el) => el === host || el.hasAttribute('data-glass-skip') || !!view.near?.includes(el),
                         onStale: () => {
                           page.stale = true
                           view.dirty = true
@@ -445,6 +540,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
               : undefined,
             screenX: rect.left + rect.width / 2,
             screenY: rect.top + rect.height / 2,
+            scale: rect.width / Math.max(w * px, 1e-3),
           }
         },
         drawn: () => {
@@ -454,7 +550,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         },
         lost: () => {
           delete host.dataset.glassReady
-          host.style.scale = ''
+          view.grow = 1
         },
       }
 
@@ -464,6 +560,21 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         engine.wake()
       }
       poke = dirty
+      triggerNod = () => {
+        if (!cfg.swell || isDisabled()) return
+        if (hasDroplet && currentDroplet === 'merged' && drop.x >= NOD_AT) nodDue = true
+        else playNod()
+        dirty()
+      }
+      triggerPulse = () => {
+        if (!cfg.swell || isDisabled()) return
+        if (hovered) {
+          growX.v += PULSE_KICK.x
+          growY.v += PULSE_KICK.y
+        }
+        settle = Math.max(0, currentPulseHold ?? PULSE)
+        dirty()
+      }
       const onDown = () => {
         if (!cfg.swell || isDisabled()) return
         pressed = true
@@ -484,6 +595,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         dirty()
       }
       const target: HTMLElement = (cfg.trigger ? host.closest<HTMLElement>(cfg.trigger) : null) ?? host
+      if (target !== host) view.pressArea = target
       target.addEventListener('pointerdown', onDown)
       target.addEventListener('pointerup', onUp)
       target.addEventListener('pointercancel', onUp)
@@ -523,8 +635,12 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         target.removeEventListener('pointerleave', onLeave)
         delete host.dataset.glassReady
         delete host.dataset.glassTone
-        host.style.scale = ''
+        host.style.removeProperty('--glass-bend')
+        canvas.style.scale = ''
+        canvas.style.transformOrigin = ''
         poke = null
+        triggerPulse = null
+        triggerNod = null
       })
     },
   )

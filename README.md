@@ -15,17 +15,25 @@ See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for full details.
 
 | Verb | Component | Description |
 | --- | --- | --- |
-| Press | `GlassButton` | Clear or tinted glass button that swells under the pointer. |
+| Press | `GlassButton` | Clear or tinted glass button that swells, stretches when pulled (`pull`), and melts into neighbors (`Cohesion`). |
 | Merge | `GlassActionButton` | Async action button whose arrow droplet melts into the body. |
 | Travel | `GlassTabs` / `GlassLens` | Segmented control whose active selection travels as a magnifying lens. |
 | Flow | `GlassBadge` | Pill badge with live refracted backdrop text. |
 | Drag | `GlassSlideToConfirm` | Slide-to-confirm control with spring snap-back. |
 | Hold | `GlassCard` | Frosted/refractive glass card (`live` mode for moving backdrops). |
 | Share | `GlassButtonGroup` | Related actions sharing one unified body of glass. |
+| Grow | `GlassMenu` | Menu whose trigger's own glass grows seamlessly into the panel (`opening: 'grow'`), supporting radio, checkbox, shortcuts, and submenus. |
 | Open | `GlassDropdownMenu` | Menu that swells out of its trigger as one gooey body of glass. |
 | Unfold | `GlassPopover` | Popover surface unfolding smoothly from its anchor. |
 | Stretch | `GlassSelect` | Select listbox connected to its trigger on a stretching glass neck. |
 | Base | `GlassLayer` / `GlassStyles` | Low-level WebGL2 glass surface and CSS fallback utilities. |
+
+## What's New in 2.0 (synced to upstream `b9f8c5c`)
+
+- **Cohesion (`COHESION`)**: Nearby glass buttons smoothly fuse into one liquid body via distance-field union when pulled together, sharing bevels, refraction, shadows, rim mirrors, and transmitted press light across the bridge.
+- **Rubber-Band Pull (`PULL`) & Press Light (`LIGHT`)**: Held buttons follow and stretch along pointer drag on the GPU shader rather than naïve CSS scaling, lighting the glass directly beneath the press point.
+- **`GlassMenu`**: Native `@ui-sdk/solid/menu` component where the button outline pours into the menu panel (`opening: 'grow'`), with full keyboard navigation, submenus, radio groups, checkboxes, and shortcuts.
+- **Safari & Seam Fixes**: Eliminates WebKit's magenta clipping artifact (`SOFT_MIN`) and trigger-popup seam dark lines, with tuned popup close-fade timing.
 
 ## Usage with Tailwind CSS v4
 
