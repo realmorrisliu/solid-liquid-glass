@@ -95,6 +95,7 @@ export const GLASS_CSS = `
 @keyframes glass-spin{to{transform:rotate(1turn)}}
 [data-glass-spin]{animation:glass-spin .8s linear infinite}
 [data-glass-ready] [data-glass-fallback]{visibility:hidden}
+[data-glass-ready] [data-glass-fallback] [data-glass-marquee]{animation:none}
 @media (prefers-reduced-motion:reduce){[data-glass-marquee],[data-glass-in],[data-glass-draw],[data-glass-spin]{animation:none}}
 @media (prefers-reduced-transparency:reduce){[data-glass-host]:not([data-glass-ready]){-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background-color:rgb(255 255 255/.96)!important}:is(.dark,[data-theme=dark]) [data-glass-host]:not([data-glass-ready]){background-color:rgb(28 28 30/.96)!important}}
 `
@@ -374,7 +375,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           const melt = cfg.swell ? Math.ceil(cohesionSoftness(h) / 4) + 3 : 0
           const padX = Math.max(8, Math.ceil(reach * (1 + most) - w / 2 + 2), melt)
           const padTop = Math.max(10, Math.ceil(hy * (1 + most) - h / 2 + 2), melt)
-          const padBottom = Math.round(h * 0.8 + 4)
+          const padBottom = (currentTune.optics?.shadow ?? 1) <= 0 ? padTop : Math.round(h * 0.8 + 4)
           const origin = `${padX + w / 2}px ${padTop + h / 2}px`
           const undo = px === 1 && py === 1 ? '' : `${(1 / px).toFixed(6)} ${(1 / py).toFixed(6)}`
           if (undo !== unstretched || (undo && origin !== unstretchedAt)) {

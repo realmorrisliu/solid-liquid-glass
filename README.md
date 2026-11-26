@@ -28,12 +28,13 @@ See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for full details.
 | Stretch | `GlassSelect` | Select listbox connected to its trigger on a stretching glass neck. |
 | Base | `GlassLayer` / `GlassStyles` | Low-level WebGL2 glass surface and CSS fallback utilities. |
 
-## What's New in 2.0 (synced to upstream `b9f8c5c`)
+## What's New in 2.0.3 (synced to upstream `6b3913f`)
 
 - **Cohesion (`COHESION`)**: Nearby glass buttons smoothly fuse into one liquid body via distance-field union when pulled together, sharing bevels, refraction, shadows, rim mirrors, and transmitted press light across the bridge.
 - **Rubber-Band Pull (`PULL`) & Press Light (`LIGHT`)**: Held buttons follow and stretch along pointer drag on the GPU shader rather than naïve CSS scaling, lighting the glass directly beneath the press point.
 - **`GlassMenu`**: Native `@ui-sdk/solid/menu` component where the button outline pours into the menu panel (`opening: 'grow'`), with full keyboard navigation, submenus, radio groups, checkboxes, and shortcuts.
 - **Safari & Seam Fixes**: Eliminates WebKit's magenta clipping artifact (`SOFT_MIN`) and trigger-popup seam dark lines, with tuned popup close-fade timing.
+- **Engine 2.0.2 & Card 2.0.3 GPU/Idle Performance**: Eliminates idle loop wake-ups on closed `GlassMenu`/`GlassPopover` (`landed`), skips unchanged GPU uploads & dirty-uniform syncs, culls out-of-region DOM siblings/invisible text in `dom-snapshot`, caches scroll snapshots in popups, trims empty shadow padding on `GlassCard`, and downsamples large frosted surfaces via `FROST_PASS`/`BACK_SKIP`.
 
 ## Usage with Tailwind CSS v4
 

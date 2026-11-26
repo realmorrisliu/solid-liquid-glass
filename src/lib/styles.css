@@ -76,6 +76,10 @@
   visibility: hidden;
 }
 
+[data-glass-ready] [data-glass-fallback] [data-glass-marquee] {
+  animation: none;
+}
+
 /* Popup shared styles */
 [data-glass-popup] {
   isolation: isolate;
