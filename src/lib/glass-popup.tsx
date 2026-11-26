@@ -97,6 +97,8 @@ const NEAR_EDGE = 0.3
 const PRESS_SCALE = 1.08
 const HOVER_SCALE = 1.04
 const HOVER_GROW = 0.08
+const SUBTLE_TRIGGER_PRESS = { omega: 32, zeta: 1 } as const
+const SUBTLE_TRIGGER_PRESS_SCALE = 0.98
 const MAX_GROW_PX = 6
 /** Once the popup is back inside it, the control swells as if hovered for this long (seconds), then lets go. */
 const SETTLE = 0.16
@@ -196,7 +198,7 @@ type Page = {
 const newPage = (): Page => ({ canvas: document.createElement('canvas'), ctx: null, key: '', at: 0, stale: true, fill: '', size: '', left: 0, top: 0, sx: 0, sy: 0, pinned: [], rigid: false })
 
 /** The shared physics and shape of one popup: the anchor's canvas and the surface's both draw it. */
-function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: GlassPopupFrom) {
+function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: GlassPopupFrom, subtleTrigger = false) {
   const morphs = opening === 'morph'
   /** `opening: 'grow'`: one shape, the control's outline growing into the surface's, on `open` alone. */
   const grows = opening === 'grow'
@@ -456,7 +458,7 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
     // (Not after a soft close, which lands slowing down and ends still.)
     if (shut && !wasShut) {
       // A menu its control grew into takes it the same way, the moment the glass is a button again.
-      if (!(morphs && MORPH.closeSoft > 0.5)) settle = SETTLE
+      if (!(morphs && MORPH.closeSoft > 0.5) && !subtleTrigger) settle = SETTLE
       // A morphing control lights up with that swell. A press still lit is topped up, never added to.
       // (Not after a soft close, which ends without a light.)
       if (morphs && MORPH.closeSoft <= 0.5 && glow.x < SETTLE_GLOW) light(undefined, undefined, SETTLE_GLOW - Math.max(glow.x, 0), false, false)
@@ -465,6 +467,18 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
     }
     if (!shut) setLabel('')
     wasShut = shut
+    if (subtleTrigger) {
+      swX.x = swX.v = swY.x = swY.v = 0
+      settle = 0
+      if (triggerView) triggerView.pull = false
+      const down = pressed && shut
+      const target = down ? SUBTLE_TRIGGER_PRESS_SCALE : 1
+      const a = stepSpring(swPress, down ? 1 : 0, SUBTLE_TRIGGER_PRESS, dt)
+      const d = stepSpring(swScale, target, SUBTLE_TRIGGER_PRESS, dt)
+      if (triggerView) triggerView.grow = swScale.x
+      const e = stepGlow(dt)
+      return a || d || e
+    }
     const greeting = settle > 0
     settle = Math.max(0, settle - dt)
     const hov = (hovered || greeting) && shut ? 1 : 0
@@ -500,8 +514,8 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
     const a = sc === 1 && stretch.x === 1 && stretch.y === 1 ? r : new DOMRect(r.left + (r.width - host.offsetWidth) / 2, r.top + (r.height - host.offsetHeight) / 2, host.offsetWidth, host.offsetHeight)
     if (a.width < 2 || a.height < 2) return null
     glowSmall = smallness(a.width, a.height)
-    const sk = lerp(1, Math.min(PRESS_SCALE, maxScale()), clamp(swPress.x, -0.12, 1.15))
-    const grow = a.height * HOVER_GROW
+    const sk = subtleTrigger ? 1 : lerp(1, Math.min(PRESS_SCALE, maxScale()), clamp(swPress.x, -0.12, 1.15))
+    const grow = subtleTrigger ? 0 : a.height * HOVER_GROW
     const c = panelRect()
     const b = clamp(bridge.x, 0, 1.1)
     // The jolt in steps of 1/128 (a fortieth of a pixel on the glass): its long, slow tail
@@ -1158,7 +1172,7 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
       // The light around a choice is the engine's on a growing surface; the others bring their own (see `light`).
       choices: grows,
       // Shut, the control is a button, pulled after the pointer that holds it (see stepSwell).
-      pull: true,
+      pull: !subtleTrigger,
       grow: 1,
       // The one place the springs advance; the popup's view reports the same answer.
       step: (dt, still) => {
@@ -1293,7 +1307,7 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
       dirty()
     }
     const onEnter = (ev: PointerEvent) => {
-      if (ev.pointerType !== 'mouse' || off()) return
+      if (subtleTrigger || ev.pointerType !== 'mouse' || off()) return
       hovered = true
       dirty()
     }
@@ -1301,10 +1315,12 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
       pressed = hovered = false
       dirty()
     }
-    el.addEventListener('pointerdown', onGate, { capture: true })
-    addEventListener('pointerup', onRelease, { capture: true })
-    addEventListener('pointercancel', onRelease, { capture: true })
-    el.addEventListener('pointerdown', onDown)
+    if (!subtleTrigger) {
+      el.addEventListener('pointerdown', onGate, { capture: true })
+      addEventListener('pointerup', onRelease, { capture: true })
+      addEventListener('pointercancel', onRelease, { capture: true })
+    }
+    el.addEventListener('pointerdown', onDown, subtleTrigger ? { capture: true } : undefined)
     el.addEventListener('pointerup', onUp)
     el.addEventListener('pointercancel', onUp)
     el.addEventListener('pointerenter', onEnter)
@@ -1325,10 +1341,12 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
     addEventListener('scroll', onScroll, { passive: true, capture: true })
     e.add(view)
     return () => {
-      el.removeEventListener('pointerdown', onGate, { capture: true })
-      removeEventListener('pointerup', onRelease, { capture: true })
-      removeEventListener('pointercancel', onRelease, { capture: true })
-      el.removeEventListener('pointerdown', onDown)
+      if (!subtleTrigger) {
+        el.removeEventListener('pointerdown', onGate, { capture: true })
+        removeEventListener('pointerup', onRelease, { capture: true })
+        removeEventListener('pointercancel', onRelease, { capture: true })
+      }
+      el.removeEventListener('pointerdown', onDown, subtleTrigger ? { capture: true } : undefined)
       el.removeEventListener('pointerup', onUp)
       el.removeEventListener('pointercancel', onUp)
       el.removeEventListener('pointerenter', onEnter)
@@ -1648,9 +1666,10 @@ export function spellLabel(content: JSX.Element): JSX.Element {
   return content
 }
 
-export function useGlassPopup(options: { matchWidth?: boolean; opening?: GlassPopupOpening; from?: GlassPopupFrom } = {}): GlassPopup {
+export function useGlassPopup(options: { matchWidth?: boolean; opening?: GlassPopupOpening; from?: GlassPopupFrom; subtleTrigger?: boolean } = {}): GlassPopup {
   const matchWidth = options.matchWidth ?? false
   const opening = options.opening ?? 'stretch'
   const from = options.from ?? 'top'
-  return createMorph(matchWidth, opening, from)
+  const subtleTrigger = options.subtleTrigger ?? false
+  return createMorph(matchWidth, opening, from, subtleTrigger)
 }

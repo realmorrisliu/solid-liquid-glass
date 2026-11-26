@@ -83,5 +83,6 @@ export {
   type GlassMaterial,
   type GlassDroplet,
   type GlassOptics,
+  type GlassSwell,
 } from './glass-layer'
 export { prefersReducedTransparency } from './engine'

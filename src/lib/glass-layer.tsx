@@ -24,6 +24,7 @@ import {
 
 export type GlassMaterial = 'clear' | 'tinted'
 export type GlassDroplet = 'none' | 'apart' | 'merged'
+export type GlassSwell = boolean | 'subtle'
 
 export type GlassOptics = {
   tintColor?: string
@@ -66,7 +67,7 @@ export type GlassLayerProps = {
   live?: boolean
   trigger?: string
   disabled?: boolean
-  swell?: boolean
+  swell?: GlassSwell
   pulse?: unknown
   pulseHold?: number
   pull?: boolean
@@ -76,6 +77,8 @@ export type GlassLayerProps = {
 const PRESS_SCALE = 1.08
 const HOVER_SCALE = 1.04
 const HOVER_GROW = 0.08
+const SUBTLE_PRESS = { omega: 32, zeta: 1 } as const
+const SUBTLE_PRESS_SCALE = 0.975
 const MAX_GROW_PX = 6
 const DROPLET_GAP = 0.25
 const PULSE = 0.16
@@ -124,7 +127,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       blur: 0,
       live: false,
       disabled: false,
-      swell: true,
+      swell: true as GlassSwell,
       pull: true,
     },
     rawProps,
@@ -184,6 +187,8 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       if (!canvas || !host || !ctx || !engine) return
 
       const clear = cfg.material === 'clear'
+      const subtle = cfg.swell === 'subtle'
+      const reactive = cfg.swell !== false
       let w = 0
       let h = 0
       let hasDroplet = false
@@ -252,8 +257,8 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         ctx,
         dirty: true,
         visible: false,
-        button: cfg.swell,
-        pull: cfg.pull && cfg.swell,
+        button: reactive,
+        pull: cfg.pull && cfg.swell === true,
         grow: 1,
         step: (dt, still) => {
           if (still) {
@@ -275,8 +280,22 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           settle = Math.max(0, settle - dt)
           const nodding = nod > 0
           nod = Math.max(0, nod - dt)
+          const fading = 1 - colorT > 0.004
+          colorT = fading ? colorT + (1 - colorT) * Math.min(1, dt * 14) : 1
+          if (subtle) {
+            growX.x = growX.v = growY.x = growY.v = 0
+            const down = pressed || greeting
+            const target = down ? SUBTLE_PRESS_SCALE : 1
+            const a = stepSpring(press, down ? 1 : 0, SUBTLE_PRESS, dt)
+            const d = stepSpring(scale, target, SUBTLE_PRESS, dt)
+            const apart = currentDroplet === 'apart' && view.visible && !pressed
+            const e = hasDroplet ? stepSpring(drop, apart ? 1 : 0, apart ? SPRINGS.dropletOut : SPRINGS.dropletIn, dt) : false
+            closing = clamp(closing + (apart ? -1 : 1) * dt * 12)
+            view.grow = scale.x
+            return a || d || e || greeting || nodding || fading || (clear && cfg.live && view.visible)
+          }
           const hov = hovered || greeting || nodding ? 1 : 0
-          const down = pressed || (cfg.swell && view.held === true) || greeting
+          const down = pressed || (reactive && view.held === true) || greeting
           const target = down ? Math.min(PRESS_SCALE, maxScale()) : hov ? Math.min(HOVER_SCALE, maxScale()) : 1
           const a = stepSpring(press, down ? 1 : 0, SPRINGS.press, dt)
           const b = stepSpring(growX, hov, SPRINGS.hoverX, dt)
@@ -292,8 +311,6 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           const by = bend * PULSE_BEND.amount * 2 * HOVER_GROW
           setBend(bend ? `${(1 + (by * (growX.x - bendFrom) * h) / Math.max(w, 1)).toFixed(4)} ${(1 + by * (growY.x - bendFrom)).toFixed(4)}` : '')
           view.grow = scale.x
-          const fading = 1 - colorT > 0.004
-          colorT = fading ? colorT + (1 - colorT) * Math.min(1, dt * 14) : 1
           return a || b || c || d || e || greeting || nodding || nodDue || bend > 0 || fading || (clear && cfg.live && view.visible)
         },
         lens: (refresh) => {
@@ -360,10 +377,10 @@ export function GlassLayer(rawProps: GlassLayerProps) {
             }
             return null
           }
-          const p = clamp(press.x, -0.12, 1.15)
+          const p = subtle ? clamp(press.x, 0, 1) : clamp(press.x, -0.12, 1.15)
           const s = Math.max(0.5, scale.x)
-          const k = lerp(1, Math.min(PRESS_SCALE, maxScale()), p) / s
-          const grow = (h * HOVER_GROW) / s
+          const k = subtle ? 1 : lerp(1, Math.min(PRESS_SCALE, maxScale()), p) / s
+          const grow = subtle ? 0 : (h * HOVER_GROW) / s
           const t = hasDroplet ? clamp(drop.x, 0, 1.06) : 0
           const pull = h * (1 + DROPLET_GAP) * t
           const hy = (h / 2) * k + grow * growY.x
@@ -372,7 +389,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           const px = view.pulled?.sx ?? 1
           const py = view.pulled?.sy ?? 1
           const most = px === 1 && py === 1 ? 0 : Math.max(w, h) <= PULL.smallUntil ? PULL.smallStretchMax : PULL.stretchMax
-          const melt = cfg.swell ? Math.ceil(cohesionSoftness(h) / 4) + 3 : 0
+          const melt = cfg.swell === true ? Math.ceil(cohesionSoftness(h) / 4) + 3 : 0
           const padX = Math.max(8, Math.ceil(reach * (1 + most) - w / 2 + 2), melt)
           const padTop = Math.max(10, Math.ceil(hy * (1 + most) - h / 2 + 2), melt)
           const padBottom = (currentTune.optics?.shadow ?? 1) <= 0 ? padTop : Math.round(h * 0.8 + 4)
@@ -562,14 +579,14 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       }
       poke = dirty
       triggerNod = () => {
-        if (!cfg.swell || isDisabled()) return
+        if (!reactive || isDisabled()) return
         if (hasDroplet && currentDroplet === 'merged' && drop.x >= NOD_AT) nodDue = true
         else playNod()
         dirty()
       }
       triggerPulse = () => {
-        if (!cfg.swell || isDisabled()) return
-        if (hovered) {
+        if (!reactive || isDisabled()) return
+        if (hovered && !subtle) {
           growX.v += PULSE_KICK.x
           growY.v += PULSE_KICK.y
         }
@@ -577,7 +594,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         dirty()
       }
       const onDown = () => {
-        if (!cfg.swell || isDisabled()) return
+        if (!reactive || isDisabled()) return
         pressed = true
         engine.wake()
       }
@@ -586,7 +603,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         engine.wake()
       }
       const onEnter = (e: PointerEvent) => {
-        if (!cfg.swell || e.pointerType !== 'mouse' || isDisabled()) return
+        if (!reactive || subtle || e.pointerType !== 'mouse' || isDisabled()) return
         hovered = true
         dirty()
       }

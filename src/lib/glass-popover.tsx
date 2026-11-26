@@ -26,6 +26,8 @@ import {
 
 export type GlassPopoverProps = PopoverProps & {
   from?: 'top' | 'bottom'
+  /** Use an Apple-restrained trigger without jelly hover wobble or pull drag, opening immediately on press. */
+  subtleTrigger?: boolean
 }
 
 export type GlassPopoverTriggerProps = {
@@ -59,8 +61,8 @@ const OVER = {
 
 export function GlassPopover(rawProps: GlassPopoverProps) {
   const props = merge({ from: 'bottom' as const }, rawProps)
-  const options = omit(props, 'children', 'from')
-  const popup = useGlassPopup({ opening: 'morph', from: props.from })
+  const options = omit(props, 'children', 'from', 'subtleTrigger')
+  const popup = useGlassPopup({ opening: 'morph', from: props.from, subtleTrigger: props.subtleTrigger })
   return (
     <Popover {...options}>
       <GlassPopupContext value={popup}>{props.children}</GlassPopupContext>

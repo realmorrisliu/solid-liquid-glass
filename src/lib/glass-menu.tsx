@@ -33,7 +33,10 @@ import { merge, omit, onSettled, Show, useContext } from 'solid-js'
 import { GlassCard } from './glass-card'
 import { GlassPopupAnchor, GlassPopupContext, GlassPopupSurface, useGlassPopup } from './glass-popup'
 
-export type GlassMenuProps = MenuProps
+export type GlassMenuProps = MenuProps & {
+  /** Use an Apple-restrained trigger without jelly hover wobble or pull drag, opening immediately on press. */
+  subtleTrigger?: boolean
+}
 
 export type GlassMenuTriggerProps = Omit<MenuTriggerProps, 'render'> & {
   children?: JSX.Element
@@ -108,9 +111,10 @@ const SURFACE =
   'min-w-44 rounded-3xl p-1.5 text-[15px] text-neutral-900 outline-none data-[glass-tone=dark]:text-white data-[glass-tone=light]:text-neutral-900'
 
 export function GlassMenu(rawProps: GlassMenuProps) {
-  const popup = useGlassPopup({ opening: 'grow' })
+  const options = omit(rawProps, 'children', 'subtleTrigger')
+  const popup = useGlassPopup({ opening: 'grow', subtleTrigger: rawProps.subtleTrigger })
   return (
-    <Menu {...rawProps}>
+    <Menu {...options}>
       <GlassPopupContext value={popup}>{rawProps.children}</GlassPopupContext>
     </Menu>
   )

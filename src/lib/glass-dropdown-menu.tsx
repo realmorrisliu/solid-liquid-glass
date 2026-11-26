@@ -27,6 +27,8 @@ import {
 export type GlassDropdownMenuProps = MenuProps & {
   over?: 'center' | 'edge'
   from?: 'top' | 'bottom'
+  /** Use an Apple-restrained trigger without jelly hover wobble or pull drag, opening immediately on press. */
+  subtleTrigger?: boolean
 }
 
 const OverContext = createContext<() => 'center' | 'edge' | undefined>(() => undefined)
@@ -55,8 +57,8 @@ export type GlassDropdownMenuItemProps = Omit<MenuItemProps, 'class'> & {
 
 export function GlassDropdownMenu(rawProps: GlassDropdownMenuProps) {
   const props = merge({ from: 'top' as const }, rawProps)
-  const options = omit(props, 'children', 'over', 'from')
-  const popup = useGlassPopup({ opening: props.over ? 'morph' : 'stretch', from: props.from })
+  const options = omit(props, 'children', 'over', 'from', 'subtleTrigger')
+  const popup = useGlassPopup({ opening: props.over ? 'morph' : 'stretch', from: props.from, subtleTrigger: props.subtleTrigger })
   return (
     <Menu {...options}>
       <OverContext value={() => props.over}>

@@ -4,7 +4,7 @@
 import type { JSX } from '@solidjs/web'
 import { createContext, createSignal, merge, omit, onSettled, Show, useContext } from 'solid-js'
 
-import { GlassLayer, type GlassMaterial } from './glass-layer'
+import { GlassLayer, type GlassMaterial, type GlassSwell } from './glass-layer'
 import { GlassPopupAnchor, GlassPopupContext } from './glass-popup'
 
 export type GlassButtonGroupSize = 'sm' | 'md' | 'lg'
@@ -16,6 +16,9 @@ export type GlassButtonGroupProps = {
   size?: GlassButtonGroupSize
   material?: GlassMaterial
   tint?: number
+  swell?: GlassSwell
+  pull?: boolean
+  backdrop?: string
   class?: string
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'children' | 'class'>
 
@@ -55,11 +58,13 @@ export function GlassButtonGroup(rawProps: GlassButtonGroupProps) {
       orientation: 'horizontal' as GlassButtonGroupOrientation,
       size: 'md' as GlassButtonGroupSize,
       material: 'tinted' as GlassMaterial,
+      swell: true as GlassSwell,
+      pull: true,
       class: '',
     },
     rawProps,
   )
-  const rest = omit(props, 'children', 'orientation', 'size', 'material', 'tint', 'class')
+  const rest = omit(props, 'children', 'orientation', 'size', 'material', 'tint', 'swell', 'pull', 'backdrop', 'class')
   const popup = useContext(GlassPopupContext)
   const [isContainer, setIsContainer] = createSignal(false)
   let rootEl: HTMLDivElement | undefined
@@ -94,7 +99,7 @@ export function GlassButtonGroup(rawProps: GlassButtonGroupProps) {
       <Show when={!isContainer()}>
         <Show
           when={popup}
-          fallback={<GlassLayer material={props.material} tint={props.tint} optics={vertical() ? STACKED : undefined} />}
+          fallback={<GlassLayer material={props.material} tint={props.tint} swell={props.swell} pull={props.pull} backdrop={props.backdrop} optics={vertical() ? STACKED : undefined} />}
         >
           {(p) => <GlassPopupAnchor popup={p()} />}
         </Show>
