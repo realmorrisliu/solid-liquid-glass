@@ -77,8 +77,8 @@ export type GlassLayerProps = {
 const PRESS_SCALE = 1.08
 const HOVER_SCALE = 1.04
 const HOVER_GROW = 0.08
-const SUBTLE_PRESS = { omega: 32, zeta: 1 } as const
-const SUBTLE_PRESS_SCALE = 0.975
+const SUBTLE_HOVER = { omega: 22, zeta: 0.92 } as const
+const SUBTLE_PRESS = { omega: 34, zeta: 0.9 } as const
 const MAX_GROW_PX = 6
 const DROPLET_GAP = 0.25
 const PULSE = 0.16
@@ -228,6 +228,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       const growY: Spring = { x: 0, v: 0 }
       const scale: Spring = { x: 1, v: 0 }
       const drop: Spring = { x: 0, v: 0 }
+      const subtleHover: Spring = { x: 0, v: 0 }
       let closing = 0
       let settle = 0
       let nod = 0
@@ -251,6 +252,8 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         else host.style.removeProperty('--glass-bend')
       }
       const maxScale = () => 1 + (2 * MAX_GROW_PX) / Math.max(w, 1)
+      const subtleHoverScale = () => Math.min(1.04, 1 + (2 * 2.5) / Math.max(w, 1))
+      const subtlePressScale = () => Math.max(0.965, 1 - (2 * 2.0) / Math.max(w, 1))
 
       const view: GlassView = {
         canvas,
@@ -262,7 +265,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         grow: 1,
         step: (dt, still) => {
           if (still) {
-            press.x = growX.x = growY.x = press.v = growX.v = growY.v = 0
+            press.x = growX.x = growY.x = subtleHover.x = press.v = growX.v = growY.v = subtleHover.v = 0
             drop.x = hasDroplet && currentDroplet === 'apart' ? 1 : 0
             drop.v = 0
             closing = drop.x ? 0 : 1
@@ -284,15 +287,17 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           colorT = fading ? colorT + (1 - colorT) * Math.min(1, dt * 14) : 1
           if (subtle) {
             growX.x = growX.v = growY.x = growY.v = 0
+            const hov = hovered || greeting || nodding ? 1 : 0
             const down = pressed || greeting
-            const target = down ? SUBTLE_PRESS_SCALE : 1
+            const target = down ? subtlePressScale() : hov ? subtleHoverScale() : 1
             const a = stepSpring(press, down ? 1 : 0, SUBTLE_PRESS, dt)
-            const d = stepSpring(scale, target, SUBTLE_PRESS, dt)
+            const hStep = stepSpring(subtleHover, hov, SUBTLE_HOVER, dt)
+            const d = stepSpring(scale, target, down ? SUBTLE_PRESS : SUBTLE_HOVER, dt)
             const apart = currentDroplet === 'apart' && view.visible && !pressed
             const e = hasDroplet ? stepSpring(drop, apart ? 1 : 0, apart ? SPRINGS.dropletOut : SPRINGS.dropletIn, dt) : false
             closing = clamp(closing + (apart ? -1 : 1) * dt * 12)
             view.grow = scale.x
-            return a || d || e || greeting || nodding || fading || (clear && cfg.live && view.visible)
+            return a || hStep || d || e || greeting || nodding || fading || (clear && cfg.live && view.visible)
           }
           const hov = hovered || greeting || nodding ? 1 : 0
           const down = pressed || (reactive && view.held === true) || greeting
@@ -401,8 +406,10 @@ export function GlassLayer(rawProps: GlassLayerProps) {
           }
           const rect = host.getBoundingClientRect()
           const pc = clamp(press.x)
+          const hv = clamp(subtleHover.x)
+          const lift = subtle ? clamp(hv * 0.85 - pc * 0.45, 0, 1) : pc
           const unit = h / DESIGN_HEIGHT
-          const bevel = lerp(DESIGN_HEIGHT * 0.42, 62, pc)
+          const bevel = subtle ? lerp(DESIGN_HEIGHT * 0.42, 54, clamp(hv * 0.5 + pc * 0.6)) : lerp(DESIGN_HEIGHT * 0.42, 62, pc)
           const radius = corner === null ? 999 : corner * (hy / (h / 2))
           const { tint, blur, optics: o } = currentTune
           const strength = Math.max(clamp(o?.light ?? 1, 0, 3), 1e-4)
@@ -430,9 +437,9 @@ export function GlassLayer(rawProps: GlassLayerProps) {
                 : undefined,
             bevel: (corner === null ? bevel : Math.min(bevel, (radius / unit) * 1.2)) * Math.max(0.05, o?.bevel ?? 1),
             band: corner === null || hasDroplet ? undefined : bevel * 0.35 * Math.max(0.05, o?.bendDepth ?? 1),
-            shadow: (0.12 * lerp(0.55, 1, pc) * Math.max(0, o?.shadow ?? 1)) / strength,
-            shadowSoftness: 34 * lerp(0.6, 1, pc) * Math.max(0.05, o?.shadowSoftness ?? 1),
-            shadowOffset: 22 * lerp(0.5, 1, pc) * Math.max(0, o?.shadowOffset ?? 1),
+            shadow: (0.12 * lerp(0.55, 1, lift) * Math.max(0, o?.shadow ?? 1)) / strength,
+            shadowSoftness: 34 * lerp(0.6, 1, lift) * Math.max(0.05, o?.shadowSoftness ?? 1),
+            shadowOffset: 22 * lerp(0.5, 1, lift) * Math.max(0, o?.shadowOffset ?? 1),
             strength,
             tune: o && {
               rim: o.rim,
@@ -603,7 +610,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         engine.wake()
       }
       const onEnter = (e: PointerEvent) => {
-        if (!reactive || subtle || e.pointerType !== 'mouse' || isDisabled()) return
+        if (!reactive || e.pointerType !== 'mouse' || isDisabled()) return
         hovered = true
         dirty()
       }

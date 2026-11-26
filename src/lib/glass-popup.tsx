@@ -97,8 +97,8 @@ const NEAR_EDGE = 0.3
 const PRESS_SCALE = 1.08
 const HOVER_SCALE = 1.04
 const HOVER_GROW = 0.08
-const SUBTLE_TRIGGER_PRESS = { omega: 32, zeta: 1 } as const
-const SUBTLE_TRIGGER_PRESS_SCALE = 0.98
+const SUBTLE_TRIGGER_HOVER = { omega: 22, zeta: 0.92 } as const
+const SUBTLE_TRIGGER_PRESS = { omega: 34, zeta: 0.9 } as const
 const MAX_GROW_PX = 6
 /** Once the popup is back inside it, the control swells as if hovered for this long (seconds), then lets go. */
 const SETTLE = 0.16
@@ -471,10 +471,14 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
       swX.x = swX.v = swY.x = swY.v = 0
       settle = 0
       if (triggerView) triggerView.pull = false
+      const hov = hovered && shut ? 1 : 0
       const down = pressed && shut
-      const target = down ? SUBTLE_TRIGGER_PRESS_SCALE : 1
+      const w = host.offsetWidth || 1
+      const hoverTarget = Math.min(1.04, 1 + (2 * 2.5) / Math.max(w, 1))
+      const pressTarget = Math.max(0.965, 1 - (2 * 2.0) / Math.max(w, 1))
+      const target = down ? pressTarget : hov ? hoverTarget : 1
       const a = stepSpring(swPress, down ? 1 : 0, SUBTLE_TRIGGER_PRESS, dt)
-      const d = stepSpring(swScale, target, SUBTLE_TRIGGER_PRESS, dt)
+      const d = stepSpring(swScale, target, down ? SUBTLE_TRIGGER_PRESS : SUBTLE_TRIGGER_HOVER, dt)
       if (triggerView) triggerView.grow = swScale.x
       const e = stepGlow(dt)
       return a || d || e
@@ -1307,7 +1311,7 @@ function createMorph(matchWidth: boolean, opening: GlassPopupOpening, from: Glas
       dirty()
     }
     const onEnter = (ev: PointerEvent) => {
-      if (subtleTrigger || ev.pointerType !== 'mouse' || off()) return
+      if (ev.pointerType !== 'mouse' || off()) return
       hovered = true
       dirty()
     }
