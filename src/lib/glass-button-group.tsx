@@ -18,6 +18,7 @@ export type GlassButtonGroupProps = {
   tint?: number
   swell?: GlassSwell
   pull?: boolean
+  cohesion?: boolean
   backdrop?: string
   class?: string
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, 'children' | 'class'>
@@ -60,11 +61,12 @@ export function GlassButtonGroup(rawProps: GlassButtonGroupProps) {
       material: 'tinted' as GlassMaterial,
       swell: true as GlassSwell,
       pull: true,
+      cohesion: true,
       class: '',
     },
     rawProps,
   )
-  const rest = omit(props, 'children', 'orientation', 'size', 'material', 'tint', 'swell', 'pull', 'backdrop', 'class')
+  const rest = omit(props, 'children', 'orientation', 'size', 'material', 'tint', 'swell', 'pull', 'cohesion', 'backdrop', 'class')
   const popup = useContext(GlassPopupContext)
   const [isContainer, setIsContainer] = createSignal(false)
   let rootEl: HTMLDivElement | undefined
@@ -99,7 +101,7 @@ export function GlassButtonGroup(rawProps: GlassButtonGroupProps) {
       <Show when={!isContainer()}>
         <Show
           when={popup}
-          fallback={<GlassLayer material={props.material} tint={props.tint} swell={props.swell} pull={props.pull} backdrop={props.backdrop} optics={vertical() ? STACKED : undefined} />}
+          fallback={<GlassLayer material={props.material} tint={props.tint} swell={props.swell} pull={props.pull} cohesion={props.cohesion} backdrop={props.backdrop} optics={vertical() ? STACKED : undefined} />}
         >
           {(p) => <GlassPopupAnchor popup={p()} />}
         </Show>

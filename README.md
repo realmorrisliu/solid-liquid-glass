@@ -28,8 +28,9 @@ See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for full details.
 | Stretch | `GlassSelect` | Select listbox connected to its trigger on a stretching glass neck. |
 | Base | `GlassLayer` / `GlassStyles` | Low-level WebGL2 glass surface and CSS fallback utilities. |
 
-## What's New in 2.0.5 (synced to upstream `6b3913f` + Apple-restrained tactile preset)
+## What's New in 2.0.6 (synced to upstream `6b3913f` + Apple-restrained tactile preset)
 
+- **COHESION Stacking & Opt-Out Isolation**: Sticky/fixed stacking layers never melt into scrolling page buttons passing beneath them, hidden (`opacity: 0` / `visibility: hidden`) elements are skipped by `cohere()`, and `swell="subtle"` (or `cohesion={false}`) keeps buttons visually sovereign without carving bites into neighbors.
 - **Restrained Tactile Preset (`swell="subtle"` & `subtleTrigger`)**: Opt-in Apple-calm button and popup trigger mode — delivers silky critically-damped hover lift, floating shadow elevation, WebGL2 specular rim highlights, and crisp `0.965–0.975` tactile press depression (with immediate popup open on press), without underdamped X/Y jelly wobble or rubber-band pulling.
 - **Cohesion (`COHESION`)**: Nearby glass buttons smoothly fuse into one liquid body via distance-field union when pulled together, sharing bevels, refraction, shadows, rim mirrors, and transmitted press light across the bridge.
 - **Rubber-Band Pull (`PULL`) & Press Light (`LIGHT`)**: Held buttons follow and stretch along pointer drag on the GPU shader rather than naïve CSS scaling, lighting the glass directly beneath the press point.

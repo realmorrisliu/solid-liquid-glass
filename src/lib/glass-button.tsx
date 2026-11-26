@@ -20,6 +20,8 @@ export type GlassButtonProps = {
   pull?: boolean
   /** Hover/press swell behavior: `true` (default), `'subtle'` (Apple-restrained press without wobble), or `false`. */
   swell?: GlassSwell
+  /** Adjacent COHESION melting into nearby buttons (`true` by default when `swell={true}`, ignored when `swell="subtle"`). */
+  cohesion?: boolean
   /** Clear glass: CSS selector of the ancestor whose content is refracted (default: the page). */
   backdrop?: string
   optics?: GlassOptics
@@ -59,12 +61,13 @@ export function GlassButton(rawProps: GlassButtonProps) {
       iconPosition: 'end' as const,
       pull: true,
       swell: true as GlassSwell,
+      cohesion: true,
       class: '',
       type: 'button' as const,
     },
     rawProps,
   )
-  const rest = omit(props, 'children', 'material', 'size', 'icon', 'iconPosition', 'tint', 'pull', 'swell', 'backdrop', 'optics', 'class', 'render', 'href', 'target', 'rel')
+  const rest = omit(props, 'children', 'material', 'size', 'icon', 'iconPosition', 'tint', 'pull', 'swell', 'cohesion', 'backdrop', 'optics', 'class', 'render', 'href', 'target', 'rel')
 
   const baseClass = () => {
     const corners = /(^|\s)!?rounded-/.test(props.class) ? '' : 'rounded-full'
@@ -73,7 +76,7 @@ export function GlassButton(rawProps: GlassButtonProps) {
 
   const inner = () => (
     <>
-      <GlassLayer material={props.material} tint={props.tint} pull={props.pull} swell={props.swell} backdrop={props.backdrop} optics={props.optics} />
+      <GlassLayer material={props.material} tint={props.tint} pull={props.pull} swell={props.swell} cohesion={props.cohesion} backdrop={props.backdrop} optics={props.optics} />
       <Show when={props.icon && props.iconPosition === 'start'}>{props.icon}</Show>
       {props.children}
       <Show when={props.icon && props.iconPosition === 'end'}>{props.icon}</Show>

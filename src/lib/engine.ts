@@ -205,6 +205,8 @@ export type GlassView = {
    * hears the press and the keys itself: a view only says what it is.
    */
   button?: boolean
+  /** `false`: opts this button out of melting into neighbours via COHESION while still keeping `button: true` press-light behavior. */
+  cohesion?: boolean
   /** With `button`: the element a press must land in, when it is not the glass's host. */
   pressArea?: Element
   /**
@@ -1871,6 +1873,7 @@ function createEngine(): GlassEngine | null {
     v: GlassView
     m: GlassLens
     host: Element
+    layer: Element | null
     /** Screen px per canvas px, and the lens centre on screen (the canvas's own (cx, cy)). */
     g: number
     sx: number
@@ -1905,9 +1908,28 @@ function createEngine(): GlassEngine | null {
   /** The buttons that were on screen when they were last measured: one that comes or goes changes its neighbours. */
   let shownButtons = new Set<GlassView>()
   let meltsChanged = false
+  const canMelt = (v: GlassView) => v.button === true && v.cohesion !== false
+  const pinnedLayer = (el: Element): Element | null => {
+    let cur: Element | null = el
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      const pos = getComputedStyle(cur).position
+      if (pos === 'fixed' || pos === 'sticky') return cur
+      cur = cur.parentElement
+    }
+    return null
+  }
+  const isHostVisible = (el: Element): boolean => {
+    let cur: Element | null = el
+    while (cur && cur !== document.documentElement) {
+      const st = getComputedStyle(cur)
+      if (st.visibility === 'hidden' || Number(st.opacity) < 0.05) return false
+      cur = cur.parentElement
+    }
+    return true
+  }
   const measure = (v: GlassView, m: GlassLens | null | undefined): Melt | null => {
     const host = hostOf(v)
-    if (!host || !m || m.width < 2 || m.height < 2) return null
+    if (!host || !m || m.width < 2 || m.height < 2 || !isHostVisible(host)) return null
     const g = m.scale && m.scale > 0 ? m.scale : 1
     const radius = Math.max(0, Math.min(m.radius, m.hx - 0.5, m.hy - 0.5))
     const band = m.refraction ? (m.band ?? 0) * m.unit : 0
@@ -1915,6 +1937,7 @@ function createEngine(): GlassEngine | null {
       v,
       m,
       host,
+      layer: pinnedLayer(host),
       g,
       sx: m.screenX,
       sy: m.screenY,
@@ -1967,7 +1990,7 @@ function createEngine(): GlassEngine | null {
     const pool: Melt[] = []
     const showing = new Set<GlassView>()
     for (const v of views) {
-      if (v.button !== true || !v.visible) continue
+      if (!canMelt(v) || !v.visible) continue
       showing.add(v)
       let m = lensOf.get(v)
       if (m === undefined) lensOf.set(v, (m = v.lens(false)))
@@ -1981,7 +2004,7 @@ function createEngine(): GlassEngine | null {
     for (const a of pool) {
       const found: { b: Melt; gap: number; k: number; join: number }[] = []
       for (const b of pool) {
-        if (b === a || a.host.contains(b.host) || b.host.contains(a.host)) continue
+        if (b === a || a.layer !== b.layer || a.host.contains(b.host) || b.host.contains(a.host)) continue
         const soft = cohesionSoftness(Math.min(a.rest, b.rest))
         if (soft <= 0) continue
         const gap = Math.max(Math.abs(b.x - a.x) - a.hx - b.hx, Math.abs(b.y - a.y) - a.hy - b.hy)
@@ -2378,7 +2401,7 @@ function createEngine(): GlassEngine | null {
       const flashing = stepFlash(v, dt, still)
       const glowing = lit || flashing
       if (moving || glowing) running = busy = true
-      const melts = melting && v.button === true
+      const melts = melting && canMelt(v)
       if (melts && v.visible !== shownButtons.has(v)) regroup = true
       if (!v.visible) continue
       const again = v.repaint === true
@@ -2595,7 +2618,7 @@ function createEngine(): GlassEngine | null {
     for (const v of views) {
       const host = hostOf(v)
       if (!host || host.matches(':disabled, [data-disabled], [aria-disabled="true"]')) continue
-      if (v.button === true) {
+      if (canMelt(v)) {
         if (!focused.contains(v.canvas)) continue
         const f = flash(v)
         if (f) f.key = true
@@ -2684,7 +2707,7 @@ function createEngine(): GlassEngine | null {
       lights.delete(v)
       flashes.delete(v)
       // The glass that melted into it lets go.
-      if (v.button === true) {
+      if (canMelt(v)) {
         meltsChanged = true
         wake()
       }

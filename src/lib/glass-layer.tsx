@@ -71,6 +71,7 @@ export type GlassLayerProps = {
   pulse?: unknown
   pulseHold?: number
   pull?: boolean
+  cohesion?: boolean
   optics?: GlassOptics
 }
 
@@ -129,6 +130,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       disabled: false,
       swell: true as GlassSwell,
       pull: true,
+      cohesion: true,
     },
     rawProps,
   )
@@ -178,6 +180,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
       disabled: props.disabled,
       swell: props.swell,
       pull: props.pull,
+      cohesion: props.cohesion,
     }),
     (cfg) => {
       const canvas = canvasEl
@@ -261,6 +264,7 @@ export function GlassLayer(rawProps: GlassLayerProps) {
         dirty: true,
         visible: false,
         button: reactive,
+        cohesion: cfg.cohesion && cfg.swell === true,
         pull: cfg.pull && cfg.swell === true,
         grow: 1,
         step: (dt, still) => {
